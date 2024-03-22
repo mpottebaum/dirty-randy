@@ -6,7 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
+	"strings"
+
+	"github.com/andybalholm/cascadia"
+	"golang.org/x/net/html"
 )
 
 func main() {
@@ -25,30 +28,37 @@ func main() {
 	fmt.Println("Resp status: ", resp.Status)
 	// needed: date, time(localized?), event name/location
 	// on something
-	reggieTbody, _ := regexp.Compile("<tbody.*</tbody>")
-	reggieRow, _ := regexp.Compile("<tr.*</tr>")
-	//	reggieDee, _ := regexp.Compile("<td.*</td>")
-	reggieRace, _ := regexp.Compile("<a.*/f1/race.*</a>")
-	reggieTrack, _ := regexp.Compile("<div.*</div>")
-	reggieDateTime, _ := regexp.Compile("<td.*winnerLightsOut__col.*<span></span>")
 	if err != nil {
 		log.Fatal(err)
 	}
-	tableBody := reggieTbody.FindString(string(content))
-	scheduleRows := reggieRow.FindAllString(tableBody, -1)
-
-	// look for class names
-	for i := 0; i < len(scheduleRows); i++ {
-		// store data based on class name match
-		scheduleRow := scheduleRows[i]
-		race := reggieRace.FindString(scheduleRow)
-		track := reggieTrack.FindString(scheduleRow)
-		dateTime := reggieDateTime.FindString(scheduleRow)
-		fmt.Println("******************")
-		fmt.Println("race", race)
-		fmt.Println("track", track)
-		fmt.Println("dateTime", dateTime)
-		fmt.Println("******************")
+	doc, _ := html.Parse(strings.NewReader(string(content)))
+	rowSel, err := cascadia.Parse("tr.Table__TR")
+	if err != nil {
+		log.Fatal(err)
+	}
+	raceSel, err := cascadia.Parse("td.race__col")
+	if err != nil {
+		log.Fatal(err)
+	}
+	raceNameSel, err := cascadia.Parse("a")
+	if err != nil {
+		log.Fatal(err)
+	}
+	raceTrackSel, err := cascadia.Parse("div")
+	if err != nil {
+		log.Fatal(err)
+	}
+	rowsResult := cascadia.QueryAll(doc, rowSel)
+	for i, row := range rowsResult {
+		raceResult := cascadia.Query(row, raceSel)
+		if raceResult != nil {
+			raceNameResult := cascadia.Query(raceResult, raceNameSel)
+			raceTrackResult := cascadia.Query(raceResult, raceTrackSel)
+			//TODO: add nil result handling
+			fmt.Println("race name: ", raceNameResult.FirstChild.Data)
+			fmt.Println("race track: ", raceTrackResult.FirstChild.Data)
+			fmt.Println("num: ", i)
+		}
 	}
 	resp.Body.Close()
 }
