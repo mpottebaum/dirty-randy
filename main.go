@@ -12,6 +12,10 @@ import (
 	"golang.org/x/net/html"
 )
 
+type LeagueEvent struct {
+	Name, Location, Date, Time, TV string
+}
+
 func main() {
 	args := os.Args
 	if len(args) <= 1 {
@@ -48,17 +52,49 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	lightsOutSel, err := cascadia.Parse("td.winnerLightsOut__col")
+	if err != nil {
+		log.Fatal(err)
+	}
+	dateTimeSel, err := cascadia.Parse("span")
+	if err != nil {
+		log.Fatal(err)
+	}
+	tvSel, err := cascadia.Parse("td.tv__col")
+	if err != nil {
+		log.Fatal(err)
+	}
 	rowsResult := cascadia.QueryAll(doc, rowSel)
+	events := make([]LeagueEvent, len(rowsResult))
 	for i, row := range rowsResult {
+		events[i] = LeagueEvent{}
+		// name and location
 		raceResult := cascadia.Query(row, raceSel)
 		if raceResult != nil {
 			raceNameResult := cascadia.Query(raceResult, raceNameSel)
 			raceTrackResult := cascadia.Query(raceResult, raceTrackSel)
 			//TODO: add nil result handling
-			fmt.Println("race name: ", raceNameResult.FirstChild.Data)
-			fmt.Println("race track: ", raceTrackResult.FirstChild.Data)
-			fmt.Println("num: ", i)
+			events[i].Name = raceNameResult.FirstChild.Data
+			events[i].Location = raceTrackResult.FirstChild.Data
+		}
+		// date and time
+		lightsOutResult := cascadia.Query(row, lightsOutSel)
+		if lightsOutResult != nil {
+			dateTimeResult := cascadia.Query(lightsOutResult, dateTimeSel)
+			//if race in past, there's no span (just winner's name)
+			if dateTimeResult != nil {
+				//TODO: add nil result handling
+				rawDateTimeStr := dateTimeResult.FirstChild.Data
+				dateAndTime := strings.Split(rawDateTimeStr, " - ")
+				events[i].Date = dateAndTime[0]
+				events[i].Time = dateAndTime[1]
+			}
+		}
+		tvResult := cascadia.Query(row, tvSel)
+		if tvResult != nil && tvResult.FirstChild != nil {
+			events[i].TV = tvResult.FirstChild.Data
 		}
 	}
+	fmt.Println("events: ", events)
 	resp.Body.Close()
 }
