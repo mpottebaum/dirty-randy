@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer resp.Body.Close()
 	content, err := io.ReadAll(resp.Body)
 	fmt.Println("Resp status: ", resp.Status)
 	// needed: date, time(localized?), event name/location
@@ -134,5 +137,26 @@ func main() {
 		}
 	}
 	fmt.Println("events: ", events)
-	resp.Body.Close()
+	dir := "csv"
+	os.Mkdir(dir, 0777)
+	fileName := path.Join(dir, "/events.csv")
+	file, err := os.Create(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	//CSV HEADERS
+	file.WriteString("Subject,Start date,Start time,Location,Description\n")
+	//TODO: consider refactoring to use "encoding/csv" writer
+	buffalo := bufio.NewWriter(file)
+	for _, event := range events {
+		if event.TV != "" {
+			rowString := event.Name + "," + event.Date + "," + event.Time + "," + event.Location + "," + "channel: " + event.TV + "\n"
+			buffalo.WriteString(rowString)
+		}
+	}
+	buffalo.Flush()
+	fmt.Printf("file %s created\n", fileName)
+	fmt.Println("import it into your google calendar")
+	fmt.Println("https://support.google.com/calendar/answer/37118?hl=en&co=GENIE.Platform%3DDesktop#zippy=%2Ccreate-or-edit-a-csv-file")
 }

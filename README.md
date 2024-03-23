@@ -19,4 +19,5 @@ output ical or gmail event files for the grand prixs
     - Start time - 10:00 AM
     - Location - "any string"
 - create .csv file in current directory
+- build test(s) from success output for refactor
 
