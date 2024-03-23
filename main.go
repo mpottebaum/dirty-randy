@@ -87,20 +87,23 @@ ParseRows:
 		if raceResult != nil {
 			raceNameResult := Query(raceResult, raceNameSel)
 			raceTrackResult := Query(raceResult, raceTrackSel)
-			//TODO: add nil result handling
-			newEvent[0] = raceNameResult.FirstChild.Data
-			newEvent[3] = raceTrackResult.FirstChild.Data
+			if raceNameResult.FirstChild != nil {
+				newEvent[0] = raceNameResult.FirstChild.Data
+			}
+			if raceTrackResult.FirstChild != nil {
+				newEvent[3] = raceTrackResult.FirstChild.Data
+			}
 		}
 		// date and time
 		lightsOutResult := Query(row, lightsOutSel)
 		if lightsOutResult != nil {
 			dateTimeResult := Query(lightsOutResult, dateTimeSel)
 			//if race in past, there's no span (just winner's name)
-			if dateTimeResult != nil {
-				//TODO: add nil result handling
+			if dateTimeResult != nil && dateTimeResult.FirstChild != nil {
 				rawDateTimeStr := dateTimeResult.FirstChild.Data
-				dateAndTime := strings.Split(rawDateTimeStr, " - ")
-				monthAndDay := strings.Split(dateAndTime[0], " ")
+				fullDateAndTime := strings.Split(rawDateTimeStr, " - ")
+				fullDate := fullDateAndTime[0]
+				monthAndDay := strings.Split(fullDate, " ")
 				month := monthAndDay[0]
 				formattedMonth := MonthMap[month]
 				day := monthAndDay[1]
@@ -108,12 +111,13 @@ ParseRows:
 				if len(day) == 1 {
 					formattedDay = "0" + formattedDay
 				}
-				hourAndPeriod := strings.Split(dateAndTime[1], " ")
+				eventTime := fullDateAndTime[1]
+				hourAndPeriod := strings.Split(eventTime, " ")
 				hour := hourAndPeriod[0]
 				period := hourAndPeriod[1]
 				formattedPeriod := strings.ToUpper(period)
-				yearInt := time.Now().Year()
-				formattedDate := formattedMonth + "/" + formattedDay + "/" + strconv.Itoa(yearInt)
+				year := strconv.Itoa(time.Now().Year())
+				formattedDate := formattedMonth + "/" + formattedDay + "/" + year
 				formattedTime := hour + " " + formattedPeriod
 				newEvent[1] = formattedDate
 				newEvent[2] = formattedTime
