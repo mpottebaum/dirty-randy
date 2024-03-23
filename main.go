@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -41,6 +40,16 @@ func ParseInt(str string) (i int, err error) {
 	return
 }
 
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func NewSel(selector string) (cascadia.Sel, error) {
+	return cascadia.Parse(selector)
+}
+
 func main() {
 	args := os.Args
 	if len(args) <= 1 {
@@ -50,46 +59,28 @@ func main() {
 	yourLeague := args[1]
 	url := "https://www.espn.com/" + yourLeague + "/schedule"
 	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	defer resp.Body.Close()
 	content, err := io.ReadAll(resp.Body)
 	fmt.Println("Resp status: ", resp.Status)
 	// needed: date, time(localized?), event name/location
 	// on something
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	doc, _ := html.Parse(strings.NewReader(string(content)))
-	rowSel, err := cascadia.Parse("tr.Table__TR")
-	if err != nil {
-		log.Fatal(err)
-	}
-	raceSel, err := cascadia.Parse("td.race__col")
-	if err != nil {
-		log.Fatal(err)
-	}
-	raceNameSel, err := cascadia.Parse("a")
-	if err != nil {
-		log.Fatal(err)
-	}
-	raceTrackSel, err := cascadia.Parse("div")
-	if err != nil {
-		log.Fatal(err)
-	}
-	lightsOutSel, err := cascadia.Parse("td.winnerLightsOut__col")
-	if err != nil {
-		log.Fatal(err)
-	}
-	dateTimeSel, err := cascadia.Parse("span")
-	if err != nil {
-		log.Fatal(err)
-	}
-	tvSel, err := cascadia.Parse("td.tv__col")
-	if err != nil {
-		log.Fatal(err)
-	}
+	rowSel, err := NewSel("tr.Table__TR")
+	check(err)
+	raceSel, err := NewSel("td.race__col")
+	check(err)
+	raceNameSel, err := NewSel("a")
+	check(err)
+	raceTrackSel, err := NewSel("div")
+	check(err)
+	lightsOutSel, err := NewSel("td.winnerLightsOut__col")
+	check(err)
+	dateTimeSel, err := NewSel("span")
+	check(err)
+	tvSel, err := NewSel("td.tv__col")
+	check(err)
 	rowsResult := cascadia.QueryAll(doc, rowSel)
 	events := make([]LeagueEvent, len(rowsResult))
 	for i, row := range rowsResult {
@@ -136,14 +127,12 @@ func main() {
 			events[i].TV = tvResult.FirstChild.Data
 		}
 	}
-	fmt.Println("events: ", events)
 	dir := "csv"
+	//GIVE ME DEM WRITE PERMS YA DIG?
 	os.Mkdir(dir, 0777)
 	fileName := path.Join(dir, "/events.csv")
 	file, err := os.Create(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	defer file.Close()
 	//CSV HEADERS
 	file.WriteString("Subject,Start date,Start time,Location,Description\n")
@@ -158,5 +147,5 @@ func main() {
 	buffalo.Flush()
 	fmt.Printf("file %s created\n", fileName)
 	fmt.Println("import it into your google calendar")
-	fmt.Println("https://support.google.com/calendar/answer/37118?hl=en&co=GENIE.Platform%3DDesktop#zippy=%2Ccreate-or-edit-a-csv-file")
+	fmt.Println("https://go.dev/doc/tutorial/add-a-test")
 }
