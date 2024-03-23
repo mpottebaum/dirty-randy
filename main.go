@@ -31,10 +31,6 @@ var MonthMap = map[string]string{
 	"Dec": "12",
 }
 
-type LeagueEvent struct {
-	Name, Location, Date, Time, TV string
-}
-
 func ParseInt(str string) (i int, err error) {
 	parsedInt, err := strconv.ParseInt(str, 10, 64)
 	i = int(parsedInt)
@@ -47,9 +43,9 @@ func check(err error) {
 	}
 }
 
-func NewSel(selector string) (cascadia.Sel, error) {
-	return cascadia.Parse(selector)
-}
+var NewSel = cascadia.Parse
+var Query = cascadia.Query
+var QueryAll = cascadia.QueryAll
 
 func main() {
 	args := os.Args
@@ -62,12 +58,11 @@ func main() {
 	resp, err := http.Get(url)
 	check(err)
 	defer resp.Body.Close()
-	content, err := io.ReadAll(resp.Body)
 	fmt.Println("Resp status: ", resp.Status)
-	// needed: date, time(localized?), event name/location
-	// on something
+	content, err := io.ReadAll(resp.Body)
 	check(err)
-	doc, _ := html.Parse(strings.NewReader(string(content)))
+	doc, err := html.Parse(strings.NewReader(string(content)))
+	check(err)
 	rowSel, err := NewSel("tr.Table__TR")
 	check(err)
 	raceSel, err := NewSel("td.race__col")
@@ -82,24 +77,24 @@ func main() {
 	check(err)
 	tvSel, err := NewSel("td.tv__col")
 	check(err)
-	rowsResult := cascadia.QueryAll(doc, rowSel)
+	rowsResult := QueryAll(doc, rowSel)
 	events := [][]string{}
 ParseRows:
 	for _, row := range rowsResult {
 		newEvent := make([]string, 5)
 		// name and location
-		raceResult := cascadia.Query(row, raceSel)
+		raceResult := Query(row, raceSel)
 		if raceResult != nil {
-			raceNameResult := cascadia.Query(raceResult, raceNameSel)
-			raceTrackResult := cascadia.Query(raceResult, raceTrackSel)
+			raceNameResult := Query(raceResult, raceNameSel)
+			raceTrackResult := Query(raceResult, raceTrackSel)
 			//TODO: add nil result handling
 			newEvent[0] = raceNameResult.FirstChild.Data
 			newEvent[3] = raceTrackResult.FirstChild.Data
 		}
 		// date and time
-		lightsOutResult := cascadia.Query(row, lightsOutSel)
+		lightsOutResult := Query(row, lightsOutSel)
 		if lightsOutResult != nil {
-			dateTimeResult := cascadia.Query(lightsOutResult, dateTimeSel)
+			dateTimeResult := Query(lightsOutResult, dateTimeSel)
 			//if race in past, there's no span (just winner's name)
 			if dateTimeResult != nil {
 				//TODO: add nil result handling
@@ -124,12 +119,12 @@ ParseRows:
 				newEvent[2] = formattedTime
 			}
 		}
-		tvResult := cascadia.Query(row, tvSel)
+		tvResult := Query(row, tvSel)
 		if tvResult != nil && tvResult.FirstChild != nil {
 			newEvent[4] = tvResult.FirstChild.Data
 		}
 		for _, column := range newEvent {
-			// if column is empty
+			// if any column is empty
 			if column == "" {
 				// do not add to events
 				continue ParseRows
