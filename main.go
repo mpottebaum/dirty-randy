@@ -6,14 +6,37 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andybalholm/cascadia"
 	"golang.org/x/net/html"
 )
 
+var MonthMap = map[string]string{
+	"Jan": "01",
+	"Feb": "02",
+	"Mar": "03",
+	"Apr": "04",
+	"May": "05",
+	"Jun": "06",
+	"Jul": "07",
+	"Aug": "08",
+	"Sep": "09",
+	"Oct": "10",
+	"Nov": "11",
+	"Dec": "12",
+}
+
 type LeagueEvent struct {
 	Name, Location, Date, Time, TV string
+}
+
+func ParseInt(str string) (i int, err error) {
+	parsedInt, err := strconv.ParseInt(str, 10, 64)
+	i = int(parsedInt)
+	return
 }
 
 func main() {
@@ -86,8 +109,23 @@ func main() {
 				//TODO: add nil result handling
 				rawDateTimeStr := dateTimeResult.FirstChild.Data
 				dateAndTime := strings.Split(rawDateTimeStr, " - ")
-				events[i].Date = dateAndTime[0]
-				events[i].Time = dateAndTime[1]
+				monthAndDay := strings.Split(dateAndTime[0], " ")
+				month := monthAndDay[0]
+				formattedMonth := MonthMap[month]
+				day := monthAndDay[1]
+				formattedDay := day
+				if len(day) == 1 {
+					formattedDay = "0" + formattedDay
+				}
+				hourAndPeriod := strings.Split(dateAndTime[1], " ")
+				hour := hourAndPeriod[0]
+				period := hourAndPeriod[1]
+				formattedPeriod := strings.ToUpper(period)
+				yearInt := time.Now().Year()
+				formattedDate := formattedMonth + "/" + formattedDay + "/" + strconv.Itoa(yearInt)
+				formattedTime := hour + " " + formattedPeriod
+				events[i].Date = formattedDate
+				events[i].Time = formattedTime
 			}
 		}
 		tvResult := cascadia.Query(row, tvSel)

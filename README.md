@@ -11,3 +11,12 @@ output ical or gmail event files for the grand prixs
 
 ![dirty randy, brother](/dr.png)
 
+## TOODOOZERS
+
+- format event data per google calendar specs
+    - Subject - "any string"
+    - Start date - 05/30/2020
+    - Start time - 10:00 AM
+    - Location - "any string"
+- create .csv file in current directory
+
