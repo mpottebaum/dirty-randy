@@ -1,9 +1,10 @@
 package main
 
 import (
-	"bufio"
+	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -82,17 +83,18 @@ func main() {
 	tvSel, err := NewSel("td.tv__col")
 	check(err)
 	rowsResult := cascadia.QueryAll(doc, rowSel)
-	events := make([]LeagueEvent, len(rowsResult))
-	for i, row := range rowsResult {
-		events[i] = LeagueEvent{}
+	events := [][]string{}
+ParseRows:
+	for _, row := range rowsResult {
+		newEvent := make([]string, 5)
 		// name and location
 		raceResult := cascadia.Query(row, raceSel)
 		if raceResult != nil {
 			raceNameResult := cascadia.Query(raceResult, raceNameSel)
 			raceTrackResult := cascadia.Query(raceResult, raceTrackSel)
 			//TODO: add nil result handling
-			events[i].Name = raceNameResult.FirstChild.Data
-			events[i].Location = raceTrackResult.FirstChild.Data
+			newEvent[0] = raceNameResult.FirstChild.Data
+			newEvent[3] = raceTrackResult.FirstChild.Data
 		}
 		// date and time
 		lightsOutResult := cascadia.Query(row, lightsOutSel)
@@ -118,14 +120,22 @@ func main() {
 				yearInt := time.Now().Year()
 				formattedDate := formattedMonth + "/" + formattedDay + "/" + strconv.Itoa(yearInt)
 				formattedTime := hour + " " + formattedPeriod
-				events[i].Date = formattedDate
-				events[i].Time = formattedTime
+				newEvent[1] = formattedDate
+				newEvent[2] = formattedTime
 			}
 		}
 		tvResult := cascadia.Query(row, tvSel)
 		if tvResult != nil && tvResult.FirstChild != nil {
-			events[i].TV = tvResult.FirstChild.Data
+			newEvent[4] = tvResult.FirstChild.Data
 		}
+		for _, column := range newEvent {
+			// if column is empty
+			if column == "" {
+				// do not add to events
+				continue ParseRows
+			}
+		}
+		events = append(events, newEvent)
 	}
 	dir := "csv"
 	//GIVE ME DEM WRITE PERMS YA DIG?
@@ -134,17 +144,22 @@ func main() {
 	file, err := os.Create(fileName)
 	check(err)
 	defer file.Close()
-	//CSV HEADERS
-	file.WriteString("Subject,Start date,Start time,Location,Description\n")
-	//TODO: consider refactoring to use "encoding/csv" writer
-	buffalo := bufio.NewWriter(file)
-	for _, event := range events {
-		if event.TV != "" {
-			rowString := event.Name + "," + event.Date + "," + event.Time + "," + event.Location + "," + "channel: " + event.TV + "\n"
-			buffalo.WriteString(rowString)
+	headers := []string{
+		"Subject",
+		"Start date",
+		"Start time",
+		"Location",
+		"Description",
+	}
+	records := append([][]string{headers}, events...)
+	writer := csv.NewWriter(file)
+	for _, record := range records {
+		if err := writer.Write(record); err != nil {
+			log.Fatalln("error writing record to csv: ", err)
 		}
 	}
-	buffalo.Flush()
+	writer.Flush()
+	check(writer.Error())
 	fmt.Printf("file %s created\n", fileName)
 	fmt.Println("import it into your google calendar")
 	fmt.Println("https://go.dev/doc/tutorial/add-a-test")

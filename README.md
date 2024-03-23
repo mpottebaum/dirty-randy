@@ -15,8 +15,8 @@ output comma-delimited `.csv` events file for import into:
 ## TOODOOZERS
 
 - build test(s) from success output for refactor
-- refactor highly reused stuff
-    - create `check(err)` type util to see if `err != nil`
+    - waiting on this until I look at supporting other leagues
+- refactor after the dust settles <-- doin
 - figure out lift for other league support
 
 ## DONEZERS
